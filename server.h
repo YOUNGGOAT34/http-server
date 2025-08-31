@@ -5,18 +5,33 @@
 #include<stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-typedef signed char i8;
+//output colors
+
+#define RED   "\033[1;31m"
+#define GREEN   "\033[1;32m"
+#define RESET "\033[0m"
+
+#define SA struct sockaddr_in
+
+//signed data types
+typedef char i8;
 typedef signed short int i16;
 typedef signed int i32;
 typedef signed long int i64;
-
+//unsigned data types
 typedef unsigned char u8;
 typedef unsigned short int u16;
 typedef unsigned int u32;
 typedef unsigned long int u64;
-
-
+//functions
+void server(void);
+void error(i8* );
+void init_add(SA *,i32);
 
 #endif
 
