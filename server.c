@@ -38,7 +38,8 @@ void server(void){
    
    SA client_addr;
    socklen_t cadd_len=sizeof(client_addr);
-   if(accept(sockfd,(struct sockaddr *)&client_addr,&cadd_len)<0){
+   i32 client_fd=accept(sockfd,(struct sockaddr *)&client_addr,&cadd_len);
+   if(client_fd<0){
       close(sockfd);
       error("Failed to accept incoming connections");
    }
@@ -47,7 +48,15 @@ void server(void){
      inet_ntoa(client_addr.sin_addr),
      ntohs(client_addr.sin_port)
    );
+
+   i8 *message="HTTP/1.1 200 OK\r\n\r\n";
+   
+   ssize_t sent_bytes=send(client_fd,message,strlen(message),0);
+   if(sent_bytes<0){
+       error("Error sending response to client\n");
+   }
    
    close(sockfd);
+   close(client_fd);
       
 }
