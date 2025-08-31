@@ -19,6 +19,13 @@ void server(void){
         error("socket creation error");
     }
 
+    u32 opt=1;
+
+   if(setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))<0){
+      close(sockfd);
+       error("Setting reusable address");
+   }
+
     SA server_address;
     u16 PORT=4221;
     init_add(&server_address,PORT);
@@ -55,7 +62,7 @@ void server(void){
    if(sent_bytes<0){
        error("Error sending response to client\n");
    }
-   
+
    close(sockfd);
    close(client_fd);
       
