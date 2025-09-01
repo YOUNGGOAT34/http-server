@@ -81,8 +81,7 @@ void server(void){
       line=strtok(NULL,"\r\n");
    }
    i8 res[BUFF];
-   // i8 *ok_message="HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: \r\n";
-   // i8 *error_message="HTTP/1.1 404 Not Found\r\n\r\n";
+   
 
    snprintf(res,sizeof(res),
       "HTTP/1.1 200 OK\r\n"
@@ -99,9 +98,6 @@ void server(void){
    ssize_t sent_bytes=0;
   
    sent_bytes=send(client_fd,res,strlen(res),0);
-
-   
-   
 
 
    if(sent_bytes<0){
