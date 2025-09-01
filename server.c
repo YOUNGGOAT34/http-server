@@ -66,10 +66,20 @@ void server(void){
 
    buffer[received_bytes]='\0';
 
-   char *method=strtok(buffer," ");
-   char *path=strtok(NULL,"/");
-   char *text=strtok(NULL," ");
+   char *line=strtok(buffer,"\r\n");
+  
 
+   write(1,buffer,received_bytes);
+
+   char *agent=NULL;
+   while(line!=NULL){
+
+      if(strncmp(line,"User-Agent:",11)==0){
+            agent=line+12;
+            break;
+      }
+      line=strtok(NULL,"\r\n");
+   }
    i8 res[BUFF];
    // i8 *ok_message="HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: \r\n";
    // i8 *error_message="HTTP/1.1 404 Not Found\r\n\r\n";
@@ -80,8 +90,8 @@ void server(void){
       "Content-Length: %ld\r\n"
       "\r\n"
       "%s",
-      strlen(text),
-      text
+      strlen(agent),
+      agent
 
    );
    
