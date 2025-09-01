@@ -64,6 +64,8 @@ void server(void){
       error("Error receivin client request");
    }
 
+   buffer[received_bytes]='\0';
+
    char *method=strtok(buffer," ");
    char *path=strtok(NULL,"/");
    char *text=strtok(NULL," ");
@@ -82,6 +84,7 @@ void server(void){
       text
 
    );
+   
    
    ssize_t sent_bytes=0;
   
