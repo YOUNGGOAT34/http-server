@@ -65,18 +65,32 @@ void server(void){
    }
 
    char *method=strtok(buffer," ");
-   char *path=strtok(NULL," ");
+   char *path=strtok(NULL,"/");
+   char *text=strtok(NULL," ");
 
-   i8 *ok_message="HTTP/1.1 200 OK\r\n\r\n";
-   i8 *error_message="HTTP/1.1 404 Not Found\r\n\r\n";
+   i8 res[BUFF];
+   // i8 *ok_message="HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: \r\n";
+   // i8 *error_message="HTTP/1.1 404 Not Found\r\n\r\n";
+
+   snprintf(res,sizeof(res),
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s",
+      strlen(text),
+      text
+
+   );
    
    ssize_t sent_bytes=0;
-   if(strcmp("/",path)!=0){
-      sent_bytes=send(client_fd,error_message,strlen(error_message),0);
-   }else{
-      sent_bytes=send(client_fd,ok_message,strlen(ok_message),0);
-   }
+  
+   sent_bytes=send(client_fd,res,strlen(res),0);
+
    
+   
+
+
    if(sent_bytes<0){
        error("Error sending response to client\n");
    }
