@@ -16,6 +16,8 @@
 #define GREEN   "\033[1;32m"
 #define RESET "\033[0m"
 
+#define BUFF 1024
+
 #define SA struct sockaddr_in
 
 //signed data types
