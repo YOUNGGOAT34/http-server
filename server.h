@@ -9,6 +9,7 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 //output colors
 
@@ -33,6 +34,7 @@ typedef unsigned long int u64;
 //functions
 void server(void);
 void error(i8* );
+void *handle_client(void *args);
 void init_add(SA *,i32);
 
 #endif

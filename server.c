@@ -5,6 +5,71 @@ void error(i8* msg){
      exit(EXIT_FAILURE);
 }
 
+
+void *handle_client(void *args){
+   i32 client_fd=*(i32 *)args;
+   free(args);
+    
+   // printf(GREEN"Accepted connection from %s:%hd\n"RESET,
+   //    inet_ntoa(client_addr.sin_addr),
+   //    ntohs(client_addr.sin_port)
+   //  );
+ 
+    i8 buffer[BUFF];
+ 
+    ssize_t received_bytes=recv(client_fd,buffer,BUFF,0);
+ 
+    if(received_bytes<0){
+       error("Error receivin client request");
+    }
+   
+    buffer[received_bytes]='\0';
+ 
+   //  char *line=strtok(buffer,"\r\n");
+   
+ 
+   //  write(1,buffer,received_bytes);
+ 
+   //  char *agent=NULL;
+   //  while(line!=NULL){
+ 
+   //     if(strncmp(line,"User-Agent:",11)==0){
+   //           agent=line+12;
+   //           break;
+   //     }
+   //     line=strtok(NULL,"\r\n");
+   //  }
+    i8 res[BUFF];
+    
+ 
+    snprintf(res,sizeof(res),
+       "HTTP/1.1 200 OK\r\n"
+      //  "Content-Type: text/plain\r\n"
+      //  "Content-Length: %ld\r\n"
+      //  "\r\n"
+      //  "%s",
+      //  strlen(agent),
+      //  agent
+ 
+    );
+    
+    
+    ssize_t sent_bytes=0;
+   
+    sent_bytes=send(client_fd,res,strlen(res),0);
+ 
+ 
+    if(sent_bytes<0){
+        error("Error sending response to client\n");
+    }
+ 
+ 
+ 
+    close(client_fd);
+
+   return NULL;
+}
+
 void init_add(SA *addr,i32 port){
    memset(addr,0,sizeof(*addr));
    addr->sin_family=AF_INET;
@@ -45,68 +110,23 @@ void server(void){
    
    SA client_addr;
    socklen_t cadd_len=sizeof(client_addr);
-   i32 client_fd=accept(sockfd,(struct sockaddr *)&client_addr,&cadd_len);
-   if(client_fd<0){
-      close(sockfd);
-      error("Failed to accept incoming connections");
-   }
 
-   printf(GREEN"Accepted connection from %s:%hd\n"RESET,
-     inet_ntoa(client_addr.sin_addr),
-     ntohs(client_addr.sin_port)
-   );
+   while(1){
 
-   i8 buffer[BUFF];
-
-   ssize_t received_bytes=recv(client_fd,buffer,BUFF,0);
-
-   if(received_bytes<0){
-      error("Error receivin client request");
-   }
-
-   buffer[received_bytes]='\0';
-
-   char *line=strtok(buffer,"\r\n");
-  
-
-   write(1,buffer,received_bytes);
-
-   char *agent=NULL;
-   while(line!=NULL){
-
-      if(strncmp(line,"User-Agent:",11)==0){
-            agent=line+12;
-            break;
+      i32 *client_fd=malloc(sizeof(i32));
+      *client_fd=accept(sockfd,(struct sockaddr *)&client_addr,&cadd_len);
+      if(*client_fd<0){
+         close(sockfd);
+         error("Failed to accept incoming connections");
       }
-      line=strtok(NULL,"\r\n");
-   }
-   i8 res[BUFF];
-   
 
-   snprintf(res,sizeof(res),
-      "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
-      "Content-Length: %ld\r\n"
-      "\r\n"
-      "%s",
-      strlen(agent),
-      agent
-
-   );
-   
-   
-   ssize_t sent_bytes=0;
-  
-   sent_bytes=send(client_fd,res,strlen(res),0);
-
-
-   if(sent_bytes<0){
-       error("Error sending response to client\n");
+      pthread_t thread;
+      pthread_create(&thread,NULL,handle_client,client_fd);
+      pthread_detach(thread);
    }
 
 
 
    close(sockfd);
-   close(client_fd);
       
 }
