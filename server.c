@@ -44,37 +44,65 @@ void *handle_client(void *args){
        line=strtok(NULL,"/");
     }
 
+  
+
     snprintf(path,sizeof(path),"%s%s",ags->dir,filename);
    
-    printf("%s\n",path);
-   
-   exit(0);
-
-
+    FILE *file=fopen(path,"rb");
     i8 res[BUFF];
-    
- 
-    snprintf(res,sizeof(res),
-       "HTTP/1.1 200 OK\r\n"
-      //  "Content-Type: text/plain\r\n"
-      //  "Content-Length: %ld\r\n"
-      //  "\r\n"
-      //  "%s",
-      //  strlen(agent),
-      //  agent
- 
-    );
-    
-    
     ssize_t sent_bytes=0;
+
+    if(!file){
+      snprintf(res,sizeof(res),
+      "HTTP/1.1 200 OK\r\n"
+     //  "Content-Type: text/plain\r\n"
+     //  "Content-Length: %ld\r\n"
+     //  "\r\n"
+     //  "%s",
+     //  strlen(agent),
+     //  agent
+
+   );
+
+
+  
    
+   
+     
+    }else{
+
+       fseek(file,0,SEEK_END);
+       u64 filesize=ftell(file);
+       rewind(file);
+   
+      i8 file_content[filesize];
+   
+      if(fread(file_content,1,filesize,file)!=filesize){
+          error("Error reading file into buffer\n");
+      }
+   
+   
+   
+       snprintf(res,sizeof(res),
+          "HTTP/1.1 200 OK\r\n"
+          "Content-Type: application/octet-stream\r\n"
+          "Content-Length: %ld\r\n"
+          "\r\n"
+          "%s",
+          filesize,
+          file_content
+    
+       );
+    }
+
+    
+    
+   
+ 
     sent_bytes=send(ags->clientfd,res,strlen(res),0);
- 
- 
     if(sent_bytes<0){
         error("Error sending response to client\n");
     }
- 
  
  
     close(ags->clientfd);
