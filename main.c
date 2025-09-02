@@ -19,6 +19,6 @@ int main(int argc,char *argv[]){
 
   printf("%s\n",dir);
   
-   // server();
+   server(dir);
    return 0;
 }

@@ -31,8 +31,14 @@ typedef unsigned char u8;
 typedef unsigned short int u16;
 typedef unsigned int u32;
 typedef unsigned long int u64;
+
+typedef struct {
+   i32 clientfd;
+   i8 *dir;
+}client_arg;
+
 //functions
-void server(void);
+void server(i8 *);
 void error(i8* );
 void *handle_client(void *args);
 void init_add(SA *,i32);

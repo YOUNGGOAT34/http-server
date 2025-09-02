@@ -7,8 +7,8 @@ void error(i8* msg){
 
 
 void *handle_client(void *args){
-   i32 client_fd=*(i32 *)args;
-   free(args);
+   client_arg *ags=(client_arg *)args;
+  
     
    // printf(GREEN"Accepted connection from %s:%hd\n"RESET,
    //    inet_ntoa(client_addr.sin_addr),
@@ -16,8 +16,8 @@ void *handle_client(void *args){
    //  );
  
     i8 buffer[BUFF];
- 
-    ssize_t received_bytes=recv(client_fd,buffer,BUFF,0);
+    printf("%d\n",ags->clientfd);
+    ssize_t received_bytes=recv(ags->clientfd,buffer,BUFF,0);
  
     if(received_bytes<0){
        error("Error receivin client request");
@@ -25,20 +25,32 @@ void *handle_client(void *args){
    
     buffer[received_bytes]='\0';
  
-   //  char *line=strtok(buffer,"\r\n");
+    char *line=strtok(buffer,"/");
    
  
    //  write(1,buffer,received_bytes);
  
-   //  char *agent=NULL;
-   //  while(line!=NULL){
+    i8 path[BUFF];
+
+    i8 *filename=NULL;
+    while(line!=NULL){
  
-   //     if(strncmp(line,"User-Agent:",11)==0){
-   //           agent=line+12;
-   //           break;
-   //     }
-   //     line=strtok(NULL,"\r\n");
-   //  }
+       if(strncmp(line,"files",5)==0){
+
+             filename=strtok(NULL," ");
+             break;
+       }
+
+       line=strtok(NULL,"/");
+    }
+
+    snprintf(path,sizeof(path),"%s%s",ags->dir,filename);
+   
+    printf("%s\n",path);
+   
+   exit(0);
+
+
     i8 res[BUFF];
     
  
@@ -56,7 +68,7 @@ void *handle_client(void *args){
     
     ssize_t sent_bytes=0;
    
-    sent_bytes=send(client_fd,res,strlen(res),0);
+    sent_bytes=send(ags->clientfd,res,strlen(res),0);
  
  
     if(sent_bytes<0){
@@ -65,7 +77,8 @@ void *handle_client(void *args){
  
  
  
-    close(client_fd);
+    close(ags->clientfd);
+    free(args);
 
    return NULL;
 }
@@ -77,7 +90,7 @@ void init_add(SA *addr,i32 port){
    addr->sin_addr.s_addr=INADDR_ANY;
  
 }
-void server(void){
+void server(i8 *dir){
     i32 sockfd=socket(AF_INET,SOCK_STREAM,0);
 
     if(sockfd<0){
@@ -85,6 +98,7 @@ void server(void){
     }
 
     u32 opt=1;
+
 
    if(setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))<0){
       close(sockfd);
@@ -100,6 +114,8 @@ void server(void){
        error("Binding failed");
    }
 
+
+
    i32 backlog=5;
    if(listen(sockfd,backlog)<0){
        close(sockfd);
@@ -113,15 +129,20 @@ void server(void){
 
    while(1){
 
-      i32 *client_fd=malloc(sizeof(i32));
-      *client_fd=accept(sockfd,(struct sockaddr *)&client_addr,&cadd_len);
-      if(*client_fd<0){
+      // i32 *client_fd=malloc(sizeof(i32));
+      i32 client_fd=accept(sockfd,(struct sockaddr *)&client_addr,&cadd_len);
+      if(client_fd<0){
          close(sockfd);
          error("Failed to accept incoming connections");
       }
 
+      client_arg *arg=malloc(sizeof(client_arg));
+      arg->dir=dir;
+     
+      arg->clientfd=client_fd;
+      
       pthread_t thread;
-      pthread_create(&thread,NULL,handle_client,client_fd);
+      pthread_create(&thread,NULL,handle_client,arg);
       pthread_detach(thread);
    }
 
