@@ -18,7 +18,7 @@
 #define RESET "\033[0m"
 
 #define BUFF 1024
-#define HEADER_SIZE 128
+#define HEADER_SIZE 512
 
 #define SA struct sockaddr_in
 

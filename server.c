@@ -28,25 +28,46 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
       u64 filesize=ftell(file);
       rewind(file);
       
-     i8 *res=malloc(filesize+HEADER_SIZE);
+     i8 *header=malloc(HEADER_SIZE);
      i8 *file_content=malloc(filesize);
-  
+     if(!header||!file_content){
+         free(header);
+         free(file_content);
+         error("Memory allocation failed");
+     }
+
      if(fread(file_content,1,filesize,file)!=filesize){
+         free(header);
+         free(file_content);
          error("Error reading file into buffer\n");
      }
   
   
   
-      i32 header_len=snprintf(res,filesize+HEADER_SIZE,
+      i32 header_len=snprintf(header,filesize+HEADER_SIZE,
          "HTTP/1.1 200 OK\r\n"
          "Content-Type: application/octet-stream\r\n"
          "Content-Length: %ld\r\n"
          "\r\n",
          filesize
       );
-   
-     memcpy(res+header_len,file_content,filesize);
 
+      if(header_len<0 || header_len>HEADER_SIZE){
+          free(header);
+          free(file_content);
+          error("Header formating failed or overflawed\n");
+      }
+
+      i8 *res=malloc(filesize+header_len);
+      if(!res){
+          free(header);
+          free(file_content);
+          error("Memory allocation failed");
+      }
+
+     memcpy(res,header,header_len);
+     memcpy(res+header_len,file_content,filesize);
+    
 
    *total_len=(u64)header_len+filesize;
     fclose(file);
@@ -72,6 +93,7 @@ void *handle_client(void *args){
     ssize_t received_bytes=recv(ags->clientfd,buffer,BUFF,0);
       
     if(received_bytes<0){
+       free(args);
        error("Error receivin client request");
     }
    
@@ -104,6 +126,7 @@ void *handle_client(void *args){
        free(body);
     }
     if(sent_bytes<0){
+        free(args);
         error("Error sending response to client\n");
     }
  
