@@ -1,5 +1,63 @@
 #include "server.h"
 
+ssize_t NOT_FOUND(i32 clientFd){
+     i8 *res="HTTP/1.1 404 Not Found\r\n";
+     
+     return send(clientFd,res,strlen(res),0);
+}
+
+
+ssize_t RES_OK(i32 clientFd){
+   i8 *res="HTTP/1.1 200 OK\r\n";
+   return send(clientFd,res,strlen(res),0);
+}
+
+i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
+   FILE *file=fopen(path,"rb");
+   
+   if(!file){
+      ssize_t sent_bytes=NOT_FOUND(clientFd);
+      if(sent_bytes<0){
+         error("Error sending response to client\n");
+     }
+
+     return NULL;
+   }
+       
+      fseek(file,0,SEEK_END);
+      u64 filesize=ftell(file);
+      rewind(file);
+      
+     i8 *res=malloc(filesize+HEADER_SIZE);
+     i8 *file_content=malloc(filesize);
+  
+     if(fread(file_content,1,filesize,file)!=filesize){
+         error("Error reading file into buffer\n");
+     }
+  
+  
+  
+      i32 header_len=snprintf(res,filesize+HEADER_SIZE,
+         "HTTP/1.1 200 OK\r\n"
+         "Content-Type: application/octet-stream\r\n"
+         "Content-Length: %ld\r\n"
+         "\r\n",
+         filesize
+      );
+   
+     memcpy(res+header_len,file_content,filesize);
+
+
+   *total_len=(u64)header_len+filesize;
+    fclose(file);
+    free(file_content);
+    return res;
+}
+
+ssize_t RESPONSE_WITH_BODY(i8 *buffer,i32 clientFD,u64 total_sz){
+      return send(clientFD,buffer,total_sz,0);
+}
+
 void error(i8* msg){
      fprintf(stderr,RED"%s :%s\n"RESET,msg,strerror(errno));
      exit(EXIT_FAILURE);
@@ -9,16 +67,10 @@ void error(i8* msg){
 void *handle_client(void *args){
    client_arg *ags=(client_arg *)args;
   
-    
-   // printf(GREEN"Accepted connection from %s:%hd\n"RESET,
-   //    inet_ntoa(client_addr.sin_addr),
-   //    ntohs(client_addr.sin_port)
-   //  );
- 
     i8 buffer[BUFF];
-    printf("%d\n",ags->clientfd);
+   
     ssize_t received_bytes=recv(ags->clientfd,buffer,BUFF,0);
- 
+      
     if(received_bytes<0){
        error("Error receivin client request");
     }
@@ -26,12 +78,9 @@ void *handle_client(void *args){
     buffer[received_bytes]='\0';
  
     char *line=strtok(buffer,"/");
-   
- 
-   //  write(1,buffer,received_bytes);
- 
+    
     i8 path[BUFF];
-
+    
     i8 *filename=NULL;
     while(line!=NULL){
  
@@ -44,62 +93,16 @@ void *handle_client(void *args){
        line=strtok(NULL,"/");
     }
 
-  
-
+    
     snprintf(path,sizeof(path),"%s%s",ags->dir,filename);
-   
-    FILE *file=fopen(path,"rb");
-    i8 res[BUFF];
     ssize_t sent_bytes=0;
-
-    if(!file){
-      snprintf(res,sizeof(res),
-      "HTTP/1.1 200 OK\r\n"
-     //  "Content-Type: text/plain\r\n"
-     //  "Content-Length: %ld\r\n"
-     //  "\r\n"
-     //  "%s",
-     //  strlen(agent),
-     //  agent
-
-   );
-
-
-  
    
-   
-     
-    }else{
-
-       fseek(file,0,SEEK_END);
-       u64 filesize=ftell(file);
-       rewind(file);
-   
-      i8 file_content[filesize];
-   
-      if(fread(file_content,1,filesize,file)!=filesize){
-          error("Error reading file into buffer\n");
-      }
-   
-   
-   
-       snprintf(res,sizeof(res),
-          "HTTP/1.1 200 OK\r\n"
-          "Content-Type: application/octet-stream\r\n"
-          "Content-Length: %ld\r\n"
-          "\r\n"
-          "%s",
-          filesize,
-          file_content
-    
-       );
+    u64 total_size=0;
+    i8 *body=READ_FILE_CONTENTS(path,ags->clientfd,&total_size);
+    if(body){
+       sent_bytes=RESPONSE_WITH_BODY(body,ags->clientfd,total_size);
+       free(body);
     }
-
-    
-    
-   
- 
-    sent_bytes=send(ags->clientfd,res,strlen(res),0);
     if(sent_bytes<0){
         error("Error sending response to client\n");
     }
@@ -107,7 +110,6 @@ void *handle_client(void *args){
  
     close(ags->clientfd);
     free(args);
-
    return NULL;
 }
 
