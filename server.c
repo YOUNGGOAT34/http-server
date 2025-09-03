@@ -98,6 +98,30 @@ ssize_t RESPONSE_WITH_BODY(i8 *buffer,i32 clientFD,u64 total_sz){
       return send(clientFD,buffer,total_sz,0);
 }
 
+
+
+i8 *EXTRACT_USER_AGENT(i8 *buffer){
+         //extract the user agent
+    i8 *start_of_user_agent=strstr(buffer,"User-Agent:");
+    if(start_of_user_agent){
+         start_of_user_agent+=strlen("User-Agent:");
+
+         while(*start_of_user_agent==' ') start_of_user_agent++;
+
+         i8 *end_of_user_agent=strstr(start_of_user_agent,"\r\n");
+
+         size_t user_agent_len= end_of_user_agent-start_of_user_agent;
+         
+         i8 *user_agent=malloc(user_agent_len+1);
+         if(!user_agent) return NULL;
+         memcpy(user_agent,start_of_user_agent,user_agent_len);
+         user_agent[user_agent_len]='\0';
+         return user_agent;
+    }
+
+    return NULL;
+}
+
 void error(i8* msg){
      fprintf(stderr,RED"%s :%s\n"RESET,msg,strerror(errno));
      exit(EXIT_FAILURE);
@@ -139,8 +163,15 @@ void *handle_client(void *args){
     i8 method[8],path[1024],version[16];
     ssize_t sent_bytes=0;
     u64 total_size=0;
-    //Handling a bad request
+    i8 *user=EXTRACT_USER_AGENT(buffer);
+    if(user){
+       printf("Accepted connection from: %s\n",user);
+    
+        free(user);
+    }
 
+    //Handling a bad request
+ 
     if(sscanf(buffer,"%s %s %s",method,path,version)!=3){
         sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
     }else{
@@ -162,8 +193,6 @@ void *handle_client(void *args){
         }
     }
 
-
-    
 
     if(sent_bytes<0){
         free(args);
