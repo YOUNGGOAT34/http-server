@@ -9,7 +9,7 @@ ssize_t NOT_FOUND(i32 clientFd,i8 *err_message){
                    sizeof(header),
 
                    "HTTP/1.1 404 Not Found\r\n"
-                   "Content-Length:%ld\r\n"
+                   "Content-Length: %ld\r\n"
                    "Content-Type: text/plain\r\n"
                    "\r\n",
                    message_len
@@ -75,7 +75,7 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
       error("Memory allocation failed");
    }
 
-   snprintf(res,header_len,
+   snprintf(res,header_len+1,
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: application/octet-stream\r\n"
       "Content-Length: %ld\r\n"
@@ -118,35 +118,52 @@ void *handle_client(void *args){
    
     buffer[received_bytes]='\0';
  
-    char *line=strtok(buffer,"/");
+
+    /*
+       The request will have (what is received):
+                  Request line
+                  Headers
+                  Body(can be empty)
+
+               Request line:
+                     METHOD(i.e  GET,POST etc)
+                     PATH
+                     HTTP version ->Http/1.1 in this case
+
+            The longest HTTP method is 7 characters ,therefore 8(puls a null terminator) is enough for this
+            The path can vary but 1024 is enough
+            HTTP version is <16 characters
+
+    */
+
+    i8 method[8],path[1024],version[16];
     ssize_t sent_bytes=0;
     u64 total_size=0;
-    //if we have a directory from the commandline then it means the client requested a file
-    if(ags->dir){
-       
-       i8 path[BUFF];
-       
-       i8 *filename=NULL;
-       while(line!=NULL){
-    
-          if(strncmp(line,"files",5)==0){
-   
-                filename=strtok(NULL," ");
-                break;
-          }
-   
-          line=strtok(NULL,"/");
-       }
-       snprintf(path,sizeof(path),"%s%s",ags->dir,filename);
-       i8 *body=READ_FILE_CONTENTS(path,ags->clientfd,&total_size);
-       if(body){
-          sent_bytes=RESPONSE_WITH_BODY(body,ags->clientfd,total_size);
-          free(body);
-       }
+    //Handling a bad request
+
+    if(sscanf(buffer,"%s %s %s",method,path,version)!=3){
+        sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
     }else{
-          sent_bytes=RES_OK(ags->clientfd);
+        if(strcmp(path,"/")==0){
+             sent_bytes=RES_OK(ags->clientfd);
+        }else if(strncmp(path,"/files/",7)==0){
+             i8 fullpath[BUFF];
+
+             snprintf(fullpath,sizeof(fullpath),"%s%s",ags->dir,path+7);
+
+             i8 *body=READ_FILE_CONTENTS(fullpath,ags->clientfd,&total_size);
+            //  write(1,body,total_size);
+             if(body){
+                sent_bytes=RESPONSE_WITH_BODY(body,ags->clientfd,total_size);
+                free(body);
+             }
+        }else{
+            sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
+        }
     }
 
+
+    
 
     if(sent_bytes<0){
         free(args);
@@ -160,6 +177,9 @@ void *handle_client(void *args){
    return NULL;
 }
 
+
+
+
 void init_add(SA *addr,i32 port){
    memset(addr,0,sizeof(*addr));
    addr->sin_family=AF_INET;
@@ -167,6 +187,10 @@ void init_add(SA *addr,i32 port){
    addr->sin_addr.s_addr=INADDR_ANY;
  
 }
+
+
+
+
 void server(i8 *dir){
     i32 sockfd=socket(AF_INET,SOCK_STREAM,0);
 
