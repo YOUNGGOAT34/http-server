@@ -1,7 +1,7 @@
 #include "server.h"
 
 ssize_t NOT_FOUND(i32 clientFd){
-     i8 *res="HTTP/1.1 404 Not Found\r\n";
+     i8 *res="HTTP/1.1 404 Not Found\r\n\r\n";
      
      return send(clientFd,res,strlen(res),0);
 }
@@ -28,50 +28,42 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
       u64 filesize=ftell(file);
       rewind(file);
       
-     i8 *header=malloc(HEADER_SIZE);
-     i8 *file_content=malloc(filesize);
-     if(!header||!file_content){
-         free(header);
-         free(file_content);
-         error("Memory allocation failed");
-     }
+      
 
-     if(fread(file_content,1,filesize,file)!=filesize){
-         free(header);
-         free(file_content);
-         error("Error reading file into buffer\n");
-     }
-  
-  
-  
-      i32 header_len=snprintf(header,filesize+HEADER_SIZE,
-         "HTTP/1.1 200 OK\r\n"
-         "Content-Type: application/octet-stream\r\n"
-         "Content-Length: %ld\r\n"
-         "\r\n",
-         filesize
-      );
+     i32 header_len=snprintf(NULL,0,
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: application/octet-stream\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n",
+      filesize
+   );
 
-      if(header_len<0 || header_len>HEADER_SIZE){
-          free(header);
-          free(file_content);
-          error("Header formating failed or overflawed\n");
-      }
+   i8 *res=malloc(filesize+header_len);
 
-      i8 *res=malloc(filesize+header_len);
-      if(!res){
-          free(header);
-          free(file_content);
-          error("Memory allocation failed");
-      }
+   if(!res){
+      error("Memory allocation failed");
+   }
 
-     memcpy(res,header,header_len);
-     memcpy(res+header_len,file_content,filesize);
-    
+   if(header_len<0 || header_len>HEADER_SIZE){
+      error("Header formating failed or overflawed\n");
+   }
+   
+   snprintf(res,HEADER_SIZE,
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: application/octet-stream\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n",
+      filesize
+   );
+   
+
+   if(fread(res+header_len,1,filesize,file)!=filesize){
+       
+       error("Error reading file into buffer\n");
+   }
 
    *total_len=(u64)header_len+filesize;
     fclose(file);
-    free(file_content);
     return res;
 }
 
