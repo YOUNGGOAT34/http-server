@@ -43,7 +43,7 @@ void server(i8 *);
 void error(i8* );
 void *handle_client(void *);
 void init_add(SA *,i32);
-ssize_t NOT_FOUND(i32 );
+ssize_t NOT_FOUND(i32,i8 *);
 i8 *READ_FILE_CONTENTS(i8 *,i32 ,u64 *);
 ssize_t RESPONSE_WITH_BODY(i8 *,i32 ,u64 );
 ssize_t RES_OK(i32 );

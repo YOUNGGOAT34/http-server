@@ -1,14 +1,45 @@
 #include "server.h"
 
-ssize_t NOT_FOUND(i32 clientFd){
-     i8 *res="HTTP/1.1 404 Not Found\r\n\r\n";
+ssize_t NOT_FOUND(i32 clientFd,i8 *err_message){
      
-     return send(clientFd,res,strlen(res),0);
+     i8 header[HEADER_SIZE];
+     u64 message_len=strlen(err_message);
+     i32 header_len=snprintf(
+                   header,
+                   sizeof(header),
+
+                   "HTTP/1.1 404 Not Found\r\n"
+                   "Content-Length:%ld\r\n"
+                   "Content-Type: text/plain\r\n"
+                   "\r\n",
+                   message_len
+     );
+
+     if(header_len<0 || (u64)header_len>sizeof(header)){
+         error("Header formatting error");
+     }
+
+     i8 *res=malloc(header_len+message_len+1);
+     if(!res){
+        error("Failed to allocate memory");
+     }
+
+     memcpy(res,header,header_len);
+     memcpy(res+header_len,err_message,message_len);
+
+     ssize_t sent_bytes= send(clientFd,res,strlen(res),0);
+     free(res);
+     return sent_bytes;
 }
 
 
 ssize_t RES_OK(i32 clientFd){
-   i8 *res="HTTP/1.1 200 OK\r\n";
+   i8 *res=
+          "HTTP/1.1 200 OK\r\n"
+           "Content-Length: 0\r\n"
+           "Content-Type:text/plain\r\n"
+           "\r\n"
+           ;
    return send(clientFd,res,strlen(res),0);
 }
 
@@ -16,7 +47,7 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
    FILE *file=fopen(path,"rb");
    
    if(!file){
-      ssize_t sent_bytes=NOT_FOUND(clientFd);
+      ssize_t sent_bytes=NOT_FOUND(clientFd,"Requested file not found");
       if(sent_bytes<0){
          error("Error sending response to client\n");
      }
@@ -38,17 +69,13 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
       filesize
    );
 
-   i8 *res=malloc(filesize+header_len);
+   i8 *res=malloc(filesize+header_len+1);//one is for a null terminator added implicitly by snprintf
 
    if(!res){
       error("Memory allocation failed");
    }
 
-   if(header_len<0 || header_len>HEADER_SIZE){
-      error("Header formating failed or overflawed\n");
-   }
-   
-   snprintf(res,HEADER_SIZE,
+   snprintf(res,header_len,
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: application/octet-stream\r\n"
       "Content-Length: %ld\r\n"
@@ -92,37 +119,42 @@ void *handle_client(void *args){
     buffer[received_bytes]='\0';
  
     char *line=strtok(buffer,"/");
-    
-    i8 path[BUFF];
-    
-    i8 *filename=NULL;
-    while(line!=NULL){
- 
-       if(strncmp(line,"files",5)==0){
-
-             filename=strtok(NULL," ");
-             break;
-       }
-
-       line=strtok(NULL,"/");
-    }
-
-    
-    snprintf(path,sizeof(path),"%s%s",ags->dir,filename);
     ssize_t sent_bytes=0;
-   
     u64 total_size=0;
-    i8 *body=READ_FILE_CONTENTS(path,ags->clientfd,&total_size);
-    if(body){
-       sent_bytes=RESPONSE_WITH_BODY(body,ags->clientfd,total_size);
-       free(body);
+    //if we have a directory from the commandline then it means the client requested a file
+    if(ags->dir){
+       
+       i8 path[BUFF];
+       
+       i8 *filename=NULL;
+       while(line!=NULL){
+    
+          if(strncmp(line,"files",5)==0){
+   
+                filename=strtok(NULL," ");
+                break;
+          }
+   
+          line=strtok(NULL,"/");
+       }
+       snprintf(path,sizeof(path),"%s%s",ags->dir,filename);
+       i8 *body=READ_FILE_CONTENTS(path,ags->clientfd,&total_size);
+       if(body){
+          sent_bytes=RESPONSE_WITH_BODY(body,ags->clientfd,total_size);
+          free(body);
+       }
+    }else{
+          sent_bytes=RES_OK(ags->clientfd);
     }
+
+
     if(sent_bytes<0){
         free(args);
         error("Error sending response to client\n");
     }
- 
- 
+
+  
+   
     close(ags->clientfd);
     free(args);
    return NULL;
@@ -182,7 +214,13 @@ void server(i8 *dir){
       }
 
       client_arg *arg=malloc(sizeof(client_arg));
-      arg->dir=dir;
+      if(!dir){
+        
+         arg->dir=NULL;
+      }else{
+
+         arg->dir=dir;
+      }
      
       arg->clientfd=client_fd;
       
