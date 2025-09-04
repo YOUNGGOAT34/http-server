@@ -49,6 +49,7 @@ void init_add(SA *,i32);
 ssize_t NOT_FOUND(i32,i8 *);
 i8 *READ_FILE_CONTENTS(i8 *,i32 ,u64 *);
 ssize_t GET_REQUEST(i8 *,i32 ,u64 );
+ssize_t POST_REQUEST(client_arg *,i8 *,i8 *);
 ssize_t RES_OK(i32 );
 ssize_t RES_CREATED(i32 clientFd);
 void LOG_REQUEST(i8 *,i8 *,i8 *,i8 *,i32,size_t,i8 *);
