@@ -138,6 +138,25 @@ void LOG_REQUEST(i8 *clientIp,i8 *version,i8 *path,i8 *method,i32 status_code,si
       status_code,
       res_size,
       user_agent ? user_agent : "-");
+
+    FILE *log_file=fopen("access.log","a");
+
+    if(!log_file){
+        error("Error while opening the log file");
+    }
+
+    fprintf(log_file,"[%s] %s \"%s %s %s\" %d %zu \"%s\"\n",
+      t_buffer,
+      clientIp,
+      method,
+      path,
+      version,
+      status_code,
+      res_size,
+      user_agent ? user_agent : "-");
+
+
+      fclose(log_file);
 }
 
 void error(i8* msg){
