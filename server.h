@@ -15,6 +15,7 @@
 
 #define RED   "\033[1;31m"
 #define GREEN   "\033[1;32m"
+#define YELLOW "\033[1;33m"
 #define RESET "\033[0m"
 
 #define BUFF 1024
@@ -36,7 +37,9 @@ typedef unsigned long int u64;
 typedef struct {
    i32 clientfd;
    i8 *dir;
+   SA addr;
 }client_arg;
+
 
 //functions
 void server(i8 *);
@@ -47,6 +50,7 @@ ssize_t NOT_FOUND(i32,i8 *);
 i8 *READ_FILE_CONTENTS(i8 *,i32 ,u64 *);
 ssize_t RESPONSE_WITH_BODY(i8 *,i32 ,u64 );
 ssize_t RES_OK(i32 );
+void LOG_REQUEST(i8 *clientIp,i8 *version,i8 *path,i8 *method,i32 status_code,size_t res_size,i8 *user_agent);
 
 #endif
 
