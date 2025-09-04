@@ -106,7 +106,7 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
     return res;
 }
 
-ssize_t RESPONSE_WITH_BODY(i8 *buffer,i32 clientFD,u64 total_sz){
+ssize_t GET_REQUEST(i8 *buffer,i32 clientFD,u64 total_sz){
       return send(clientFD,buffer,total_sz,0);
 }
 
@@ -229,7 +229,7 @@ void *handle_client(void *args){
              sent_bytes=RES_OK(ags->clientfd);
              status_code=200;
              res_size=0;
-        }else if(strncmp(path,"/files/",7)==0){
+        }else if(strcmp(method,"GET")==0 && strncmp(path,"/files/",7)==0){
              i8 fullpath[BUFF];
 
              snprintf(fullpath,sizeof(fullpath),"%s%s",ags->dir,path+7);
@@ -237,7 +237,7 @@ void *handle_client(void *args){
              i8 *body=READ_FILE_CONTENTS(fullpath,ags->clientfd,&total_size);
            
              if(body){
-                sent_bytes=RESPONSE_WITH_BODY(body,ags->clientfd,total_size);
+                sent_bytes=GET_REQUEST(body,ags->clientfd,total_size);
                 free(body);
 
                 status_code=200;
@@ -247,6 +247,8 @@ void *handle_client(void *args){
                res_size = strlen("Requested file not found");
              }  
 
+        }else if(strcmp(method,"POST")==0 && strncmp(path,"/files/",7)==0){
+                    
         }else{
             sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
             status_code=404;
