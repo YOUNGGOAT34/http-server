@@ -50,7 +50,8 @@ ssize_t NOT_FOUND(i32,i8 *);
 i8 *READ_FILE_CONTENTS(i8 *,i32 ,u64 *);
 ssize_t RESPONSE_WITH_BODY(i8 *,i32 ,u64 );
 ssize_t RES_OK(i32 );
-void LOG_REQUEST(i8 *clientIp,i8 *version,i8 *path,i8 *method,i32 status_code,size_t res_size,i8 *user_agent);
+ssize_t RES_CREATED(i32 clientFd);
+void LOG_REQUEST(i8 *,i8 *,i8 *,i8 *,i32,size_t,i8 *);
 
 #endif
 

@@ -43,6 +43,18 @@ ssize_t RES_OK(i32 clientFd){
    return send(clientFd,res,strlen(res),0);
 }
 
+
+ssize_t RES_CREATED(i32 clientFd){
+   i8 *res=
+          "HTTP/1.1 201 CREATED\r\n"
+           "Content-Length: 0\r\n"
+           "Content-Type:text/plain\r\n"
+           "\r\n"
+           ;
+   return send(clientFd,res,strlen(res),0);
+}
+
+
 i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
    FILE *file=fopen(path,"rb");
    
@@ -178,7 +190,7 @@ void *handle_client(void *args){
     }
    
     buffer[received_bytes]='\0';
- 
+
 
     /*
        The request will have (what is received):
