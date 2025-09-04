@@ -55,6 +55,11 @@ ssize_t RES_CREATED(i32 clientFd){
 }
 
 
+void WRITE_CONTENT_TO_FILE(){
+    
+}
+
+
 i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
    FILE *file=fopen(path,"rb");
    
@@ -110,6 +115,10 @@ ssize_t GET_REQUEST(i8 *buffer,i32 clientFD,u64 total_sz){
       return send(clientFD,buffer,total_sz,0);
 }
 
+ssize_t POST_REQUEST(){
+
+}
+
 
 
 i8 *EXTRACT_USER_AGENT(i8 *buffer){
@@ -133,6 +142,8 @@ i8 *EXTRACT_USER_AGENT(i8 *buffer){
 
     return NULL;
 }
+
+
 
 void LOG_REQUEST(i8 *clientIp,i8 *version,i8 *path,i8 *method,i32 status_code,size_t res_size,i8 *user_agent){
      
@@ -248,7 +259,38 @@ void *handle_client(void *args){
              }  
 
         }else if(strcmp(method,"POST")==0 && strncmp(path,"/files/",7)==0){
-                    
+                     i8 fullpath[BUFF];
+                     snprintf(fullpath,sizeof(fullpath),"%s%s",ags->dir,path+7);
+
+                     i8 *content_length=strstr(buffer,"Content-Length:");
+                     if(!content_length){
+                         sent_bytes=NOT_FOUND(ags->clientfd,"Missing content length");
+                     }else{
+                         content_length+=strlen("Content-Length:");
+                         while(*content_length==' ') content_length++;
+
+                         u32 cont_length=(int)strtol(content_length,NULL,0);
+
+                         i8 *body=strstr(buffer,"\r\n\r\n");
+
+                         if(body){
+                              body+=strlen("\r\n\r\n");
+
+                              FILE *file=fopen(fullpath,"wb");
+
+                              if(!file){
+                                  sent_bytes=NOT_FOUND(ags->clientfd,"Failed to create file");
+                              }
+
+                              fwrite(body,1,cont_length,file);
+                              fclose(file);
+
+                              sent_bytes=RES_CREATED(ags->clientfd);
+                         }else{
+                           sent_bytes=NOT_FOUND(ags->clientfd,"Empty body");
+                         }
+                     }
+
         }else{
             sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
             status_code=404;
