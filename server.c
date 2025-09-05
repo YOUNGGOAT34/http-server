@@ -177,6 +177,78 @@ i8 *EXTRACT_USER_AGENT(i8 *buffer){
     return NULL;
 }
 
+i8 *FILE_ENCODING(i8 *encoding_format,i32 *header_len){
+   encoding_format+=strlen("Accept-Encoding:");
+   while(*encoding_format==' ') encoding_format++;
+   
+   i8 *encodings=strdup(encoding_format);
+   i8 *token=strtok(encodings,",");
+   bool suports_gzip=false;
+
+   while(token){
+       while(*token==' ') token++;
+
+       if(strcmp(token,"gzip")==0){
+            suports_gzip=true;
+            encoding_format=strdup(token);
+            break;
+       }
+
+       token=strtok(NULL,",");
+   }
+
+   free(encodings);
+
+   i8 *res;
+    if(suports_gzip){
+
+       *header_len=snprintf(
+               NULL,0,
+               "HTTP/1.1 200 OK\r\n"
+               "Content-Encoding:%s\r\n"
+               "Content-Type:text/plain\r\n"
+               "\r\n",
+               encoding_format
+       );
+
+       res=malloc(*header_len+1);
+       snprintf(
+          res,*header_len+1,
+          "HTTP/1.1 200 OK\r\n"
+          "Content-Encoding:%s\r\n"
+          "Content-Type:text/plain\r\n"
+          "\r\n",
+          encoding_format
+      );
+
+      free(encoding_format);
+
+    }else{
+       *header_len=snprintf(
+          NULL,0,
+          "HTTP/1.1 200 OK\r\n"
+          
+          "Content-Type:text/plain\r\n"
+          "\r\n"
+          
+       );
+
+      res=malloc(*header_len+1);
+     snprintf(
+             res,*header_len+1,
+             "HTTP/1.1 200 OK\r\n"
+          
+             "Content-Type:text/plain\r\n"
+              "\r\n"
+              
+         );
+        
+    }
+
+   
+    
+    return res;
+}
 
 
 void LOG_REQUEST(i8 *clientIp,i8 *version,i8 *path,i8 *method,i32 status_code,size_t res_size,i8 *user_agent){
@@ -303,56 +375,8 @@ void *handle_client(void *args){
 
                     }else{
 
-                       encoding_format+=strlen("Accept-Encoding:");
-                       while(*encoding_format==' ') encoding_format++;
-
-                       i32 header_len;
-                       i8 *res;
-
-                        if(strcmp(encoding_format,"gzip")==0){
-
-                           header_len=snprintf(
-                                   NULL,0,
-                                   "HTTP/1.1 200 OK\r\n"
-                                   "Content-Encoding:%s\r\n"
-                                   "Content-Type:text/plain\r\n"
-                                   "\r\n",
-                                   encoding_format
-                           );
-      
-                           res=malloc(header_len+1);
-                           snprintf(
-                              res,header_len+1,
-                              "HTTP/1.1 200 OK\r\n"
-                              "Content-Encoding:%s\r\n"
-                              "Content-Type:text/plain\r\n"
-                              "\r\n",
-                              encoding_format
-                          );
-
-                        }else{
-                           header_len=snprintf(
-                              NULL,0,
-                              "HTTP/1.1 200 OK\r\n"
-                              
-                              "Content-Type:text/plain\r\n"
-                              "\r\n"
-                              
-                           );
- 
-                          res=malloc(header_len+1);
-                         snprintf(
-                                 res,header_len+1,
-                                 "HTTP/1.1 200 OK\r\n"
-                              
-                                 "Content-Type:text/plain\r\n"
-                                  "\r\n"
-                                  
-                             );
-                            
-                        }
-
-   
+                        i32 header_len;
+                        i8 *res=FILE_ENCODING(encoding_format,&header_len);
                         sent_bytes=send(ags->clientfd,res,header_len,0);
                         free(res);
                     }
