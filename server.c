@@ -128,7 +128,7 @@ ssize_t POST_REQUEST(client_arg *ags,i8 *buffer,i8 *path){
        while(*content_length==' ') content_length++;
 
        u32 cont_length=(int)strtol(content_length,NULL,0);
-
+       
        i8 *body=strstr(buffer,"\r\n\r\n");
 
        if(body){
@@ -294,6 +294,42 @@ void *handle_client(void *args){
 
         }else if(strcmp(method,"POST")==0 && strncmp(path,"/files/",7)==0){
                   sent_bytes=POST_REQUEST(ags,buffer,path);
+
+        }else if(strcmp(method,"GET")==0 && strncmp(path,"/echo/",6)==0){
+                     
+                    i8 *encoding_format=strstr(buffer,"Accept-Encoding: ");
+                    if(!encoding_format){
+                        sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
+
+                    }else{
+
+                       encoding_format+=strlen("Accept-Encoding:");
+                       while(*encoding_format==' ') encoding_format++;
+   
+                        i32 header_len=snprintf(
+                                NULL,0,
+                                "HTTP/1.1 200 OK\r\n"
+                                "Content-Encoding:%s\r\n"
+                                "Content-Type:text/plain\r\n"
+                                "\r\n",
+                                encoding_format
+                        );
+   
+                        i8 *res=malloc(header_len+1);
+                        
+                        snprintf(
+                           res,header_len+1,
+                           "HTTP/1.1 200 OK\r\n"
+                           "Content-Encoding:%s\r\n"
+                           "Content-Type:text/plain\r\n"
+                           "\r\n",
+                           encoding_format
+                   );
+   
+                        sent_bytes=send(ags->clientfd,res,header_len,0);
+                        free(res);
+                    }
+
 
         }else{
             sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
