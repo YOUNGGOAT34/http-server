@@ -305,26 +305,53 @@ void *handle_client(void *args){
 
                        encoding_format+=strlen("Accept-Encoding:");
                        while(*encoding_format==' ') encoding_format++;
-   
-                        i32 header_len=snprintf(
-                                NULL,0,
-                                "HTTP/1.1 200 OK\r\n"
-                                "Content-Encoding:%s\r\n"
-                                "Content-Type:text/plain\r\n"
-                                "\r\n",
-                                encoding_format
-                        );
-   
-                        i8 *res=malloc(header_len+1);
-                        
-                        snprintf(
-                           res,header_len+1,
-                           "HTTP/1.1 200 OK\r\n"
-                           "Content-Encoding:%s\r\n"
-                           "Content-Type:text/plain\r\n"
-                           "\r\n",
-                           encoding_format
-                   );
+
+                       i32 header_len;
+                       i8 *res;
+
+                        if(strcmp(encoding_format,"gzip")==0){
+
+                           header_len=snprintf(
+                                   NULL,0,
+                                   "HTTP/1.1 200 OK\r\n"
+                                   "Content-Encoding:%s\r\n"
+                                   "Content-Type:text/plain\r\n"
+                                   "\r\n",
+                                   encoding_format
+                           );
+      
+                           res=malloc(header_len+1);
+                           snprintf(
+                              res,header_len+1,
+                              "HTTP/1.1 200 OK\r\n"
+                              "Content-Encoding:%s\r\n"
+                              "Content-Type:text/plain\r\n"
+                              "\r\n",
+                              encoding_format
+                          );
+
+                        }else{
+                           header_len=snprintf(
+                              NULL,0,
+                              "HTTP/1.1 200 OK\r\n"
+                              
+                              "Content-Type:text/plain\r\n"
+                              "\r\n"
+                              
+                           );
+ 
+                          res=malloc(header_len+1);
+                         snprintf(
+                                 res,header_len+1,
+                                 "HTTP/1.1 200 OK\r\n"
+                              
+                                 "Content-Type:text/plain\r\n"
+                                  "\r\n"
+                                  
+                             );
+                            
+                        }
+
    
                         sent_bytes=send(ags->clientfd,res,header_len,0);
                         free(res);
