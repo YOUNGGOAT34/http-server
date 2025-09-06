@@ -191,31 +191,32 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
 
        if(strncmp(token,"gzip",4)==0){
             suports_gzip=true;
-            encoding_format=strdup(token);
+            encoding_format=strtok(token,"\r\n");
             break;
        }else{
           printf("False\n");
        }
-
        token=strtok(NULL,",");
    }
 
-   free(encodings);
+   // free(encodings);
    i8 *res;
     if(suports_gzip){
 
        uLong str_len=strlen(str);
-       uLong compressed_len=compressBound(str_len);
+       uLong compressed_len=compressBound(str_len)+32;
        Bytef *compressed_data=malloc(compressed_len);
 
        if(!compressed_data){
            error("Failed to allocate memory for the compressed data");
        }
+
+       uLong output_len=compressed_len;
        
-       i32 ret=gzip_compression((Bytef *)str,str_len,compressed_data,&compressed_len);
+       i32 ret=gzip_compression((Bytef *)str,str_len,compressed_data,&output_len);
 
       if(ret!=0){
-         printf("%d\n",ret);
+         
           free(compressed_data);
           error("Failed to compress");
       }
@@ -233,10 +234,13 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
                "Connection: close\r\n"
                "\r\n",
                encoding_format,
-               compressed_len
+               output_len
        );
 
-       res=malloc(header_len+compressed_len+1);
+       printf("%ld\n",strlen(encoding_format));
+
+       res=malloc(header_len+output_len+1);
+       memset(res,0,header_len+output_len+1);
        snprintf(
           res,header_len+1,
           "HTTP/1.1 200 OK\r\n"
@@ -246,11 +250,11 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
           "Connection: close\r\n"
           "\r\n",
           encoding_format,
-          compressed_len
+          output_len
       );
 
-      memcpy(res+header_len,compressed_data,compressed_len);
-      i32 total_size=header_len+compressed_len;
+      memcpy(res+header_len,compressed_data,output_len);
+      i32 total_size=header_len+output_len;
       *res_size=total_size;
       free(encoding_format);
 
@@ -299,8 +303,13 @@ int gzip_compression(Bytef *source,uLong src_len,Bytef *dest,uLong *dst_len){
        stream.avail_out=*dst_len;
        stream.next_out=dest;
 
-       i32 ret=deflate(&stream,Z_FINISH);
+       i32 ret;
+       
+       do{
 
+          ret=deflate(&stream,Z_FINISH);
+       }while(ret==Z_OK);
+     
        deflateEnd(&stream);
 
        if(ret!=Z_STREAM_END){
