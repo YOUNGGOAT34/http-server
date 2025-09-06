@@ -211,11 +211,16 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
        if(!compressed_data){
            error("Failed to allocate memory for the compressed data");
        }
+       
+       i32 ret=gzip_compression((Bytef *)str,str_len,compressed_data,&compressed_len);
 
-       if(compress2(compressed_data,&compressed_len,(const Bytef *)str,str_len,Z_BEST_COMPRESSION)!=Z_OK){
-             free(compressed_data);
-             error("Could not compress the data");
-       }
+      if(ret!=0){
+         printf("%d\n",ret);
+          free(compressed_data);
+          error("Failed to compress");
+      }
+
+      // free(compressed_data);
 
 
 
@@ -298,7 +303,10 @@ int gzip_compression(Bytef *source,uLong src_len,Bytef *dest,uLong *dst_len){
 
        deflateEnd(&stream);
 
-       if(ret!=Z_STREAM_END) return -2;
+       if(ret!=Z_STREAM_END){
+         printf("%s\n",strerror(errno));
+         return -2;
+       } 
 
       *dst_len=stream.total_out;
       return 0;
