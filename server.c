@@ -180,29 +180,40 @@ i8 *EXTRACT_USER_AGENT(i8 *buffer){
 i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
    encoding_format+=strlen("Accept-Encoding:");
    while(*encoding_format==' ') encoding_format++;
-   
    i8 *encodings=strdup(encoding_format);
    i8 *token=strtok(encodings,",");
+   i8 *encoding_choice=NULL;
    bool suports_gzip=false;
-
+   
    while(token){
        while(*token==' ') token++;
-      //  printf("%s\n",token);
-
        if(strncmp(token,"gzip",4)==0){
             suports_gzip=true;
-            encoding_format=strtok(token,"\r\n");
+
+            encoding_choice=strdup(token);
             break;
        }else{
           printf("False\n");
        }
+
        token=strtok(NULL,",");
    }
 
-   // free(encodings);
+  free(encodings);
+
+   if(encoding_choice){
+
+      char *contains_crlf=strstr(encoding_choice,"\r\n");
+      char *contains_new_line=strstr(encoding_choice,"\n");
+   
+      if(contains_new_line || contains_crlf){
+         char *newline = contains_crlf ? contains_crlf : contains_new_line;
+         *newline = '\0'; 
+      }
+   }
+
    i8 *res;
     if(suports_gzip){
-
        uLong str_len=strlen(str);
        uLong compressed_len=compressBound(str_len)+32;
        Bytef *compressed_data=malloc(compressed_len);
@@ -221,10 +232,6 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
           error("Failed to compress");
       }
 
-      // free(compressed_data);
-
-
-
        i32 header_len=snprintf(
                NULL,0,
                "HTTP/1.1 200 OK\r\n"
@@ -233,11 +240,9 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
                "Content-Type: text/plain\r\n"
                "Connection: close\r\n"
                "\r\n",
-               encoding_format,
+               encoding_choice,
                output_len
        );
-
-       printf("%ld\n",strlen(encoding_format));
 
        res=malloc(header_len+output_len+1);
        memset(res,0,header_len+output_len+1);
@@ -249,14 +254,15 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
           "Content-Type: text/plain\r\n"
           "Connection: close\r\n"
           "\r\n",
-          encoding_format,
+          encoding_choice,
           output_len
       );
 
       memcpy(res+header_len,compressed_data,output_len);
       i32 total_size=header_len+output_len;
       *res_size=total_size;
-      free(encoding_format);
+      free(compressed_data);
+      free(encoding_choice);
 
     }else{
         i32 header_len=snprintf(
@@ -267,7 +273,6 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
        );
 
       
-       
      res=malloc(header_len+1);
      snprintf(
              res,header_len+1,
@@ -280,8 +285,6 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
          *res_size=header_len;
         
     }
-
-
  
     return res;
 }
