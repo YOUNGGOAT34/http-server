@@ -55,11 +55,6 @@ ssize_t RES_CREATED(i32 clientFd){
 }
 
 
-void WRITE_CONTENT_TO_FILE(){
-    
-}
-
-
 i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
    FILE *file=fopen(path,"rb");
    
@@ -108,8 +103,17 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
 
    *total_len=(u64)header_len+filesize;
     fclose(file);
+
+    int fd = open("/home/goat/Desktop/http server/response_dump.bin", O_CREAT | O_WRONLY | O_TRUNC, 0644);
+
+
+
+
     return res;
 }
+
+
+
 
 ssize_t GET_REQUEST(i8 *buffer,i32 clientFD,u64 total_sz){
       return send(clientFD,buffer,total_sz,0);
@@ -177,7 +181,9 @@ i8 *EXTRACT_USER_AGENT(i8 *buffer){
     return NULL;
 }
 
-i8 *FILE_ENCODING(i8 *encoding_format,i32 *header_len){
+
+
+i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
    encoding_format+=strlen("Accept-Encoding:");
    while(*encoding_format==' ') encoding_format++;
    
@@ -187,57 +193,82 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *header_len){
 
    while(token){
        while(*token==' ') token++;
+      //  printf("%s\n",token);
 
-       if(strcmp(token,"gzip")==0){
+       if(strncmp(token,"gzip",4)==0){
             suports_gzip=true;
             encoding_format=strdup(token);
             break;
+       }else{
+          printf("False\n");
        }
 
        token=strtok(NULL,",");
    }
 
    free(encodings);
-
    i8 *res;
     if(suports_gzip){
 
-       *header_len=snprintf(
+       uLong str_len=strlen(str);
+       uLong compressed_len=compressBound(str_len);
+       Bytef *compressed_data=malloc(compressed_len);
+
+       if(!compressed_data){
+           error("Failed to allocate memory for the compressed data");
+       }
+
+       if(compress2(compressed_data,&compressed_len,(const Bytef *)str,str_len,Z_BEST_COMPRESSION)!=Z_OK){
+             free(compressed_data);
+             error("Could not compress the data");
+       }
+
+
+
+       i32 header_len=snprintf(
                NULL,0,
                "HTTP/1.1 200 OK\r\n"
-               "Content-Encoding:%s\r\n"
-               "Content-Type:text/plain\r\n"
+               "Content-Encoding: %s\r\n"
+               "Content-Length: %lu\r\n"
+               "Content-Type: text/plain\r\n"
+               "Connection: close\r\n"
                "\r\n",
-               encoding_format
+               encoding_format,
+               compressed_len
        );
 
-       res=malloc(*header_len+1);
+       res=malloc(header_len+compressed_len+1);
        snprintf(
-          res,*header_len+1,
+          res,header_len+1,
           "HTTP/1.1 200 OK\r\n"
-          "Content-Encoding:%s\r\n"
-          "Content-Type:text/plain\r\n"
+          "Content-Encoding: %s\r\n"
+          "Content-Length: %lu\r\n"
+          "Content-Type: text/plain\r\n"
+          "Connection: close\r\n"
           "\r\n",
-          encoding_format
+          encoding_format,
+          compressed_len
       );
 
+      memcpy(res+header_len,compressed_data,compressed_len);
+      i32 total_size=header_len+compressed_len;
+      *res_size=total_size;
       free(encoding_format);
 
     }else{
-       *header_len=snprintf(
+        i32 header_len=snprintf(
           NULL,0,
           "HTTP/1.1 200 OK\r\n"
-          
           "Content-Type:text/plain\r\n"
           "\r\n"
-          
        );
 
-      res=malloc(*header_len+1);
+      
+       
+     res=malloc(header_len+1);
      snprintf(
-             res,*header_len+1,
+             res,header_len+1,
              "HTTP/1.1 200 OK\r\n"
-          
              "Content-Type:text/plain\r\n"
               "\r\n"
               
@@ -245,8 +276,18 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *header_len){
         
     }
 
-   
-    
+
+int fd = open("response_dump.bin", O_CREAT | O_WRONLY | O_TRUNC, 0644);
+if (fd < 0) {
+   perror("Failed to open file for writing");
+} else {
+   ssize_t written = write(fd, res, *res_size);
+   if (written < 0) {
+       perror("Failed to write response to file");
+   }
+   close(fd);
+}
+ 
     return res;
 }
 
@@ -334,7 +375,7 @@ void *handle_client(void *args){
     i8 clientIp[INET_ADDRSTRLEN];
     inet_ntop(AF_INET,&ags->addr.sin_addr,clientIp,sizeof(clientIp));
     i8 *user=EXTRACT_USER_AGENT(buffer);
-  
+    
 
     //Handling a bad request
     if(sscanf(buffer,"%s %s %s",method,path,version)!=3){
@@ -368,16 +409,15 @@ void *handle_client(void *args){
                   sent_bytes=POST_REQUEST(ags,buffer,path);
 
         }else if(strcmp(method,"GET")==0 && strncmp(path,"/echo/",6)==0){
-                     
+                    i8 *str=path+strlen("/echo/");
                     i8 *encoding_format=strstr(buffer,"Accept-Encoding: ");
                     if(!encoding_format){
                         sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
-
                     }else{
-
-                        i32 header_len;
-                        i8 *res=FILE_ENCODING(encoding_format,&header_len);
-                        sent_bytes=send(ags->clientfd,res,header_len,0);
+                        i32 total_len;
+                        i8 *res=FILE_ENCODING(encoding_format,&total_len,str);
+                        //  write(1,res,total_len);
+                        sent_bytes=send(ags->clientfd,res,total_len,0);
                         free(res);
                     }
 

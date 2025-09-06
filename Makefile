@@ -1,4 +1,5 @@
 CC:=gcc
+LDFLAGS:=-lz
 
 
 FLAGS:=  -std=c2x -Wall -Wextra 
@@ -16,7 +17,7 @@ TARGET:=main
 all: clean $(TARGET)
 
 $(TARGET):$(OBJECTS)
-			$(CC) -o $@ $^
+			$(CC) -o $@ $^ $(LDFLAGS)
 
 $(BUILD_DIR)/%.o:%.c
 			mkdir -p $(BUILD_DIR)

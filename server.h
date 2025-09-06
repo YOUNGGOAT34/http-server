@@ -11,6 +11,9 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <zlib.h>
+#include <fcntl.h>
+
 
 //output colors
 
@@ -49,6 +52,7 @@ void *handle_client(void *);
 void init_add(SA *,i32);
 ssize_t NOT_FOUND(i32,i8 *);
 i8 *READ_FILE_CONTENTS(i8 *,i32 ,u64 *);
+i8 *FILE_ENCODING(i8 *,i32 *,i8 *);
 ssize_t GET_REQUEST(i8 *,i32 ,u64 );
 ssize_t POST_REQUEST(client_arg *,i8 *,i8 *);
 ssize_t RES_OK(i32 );
