@@ -267,12 +267,41 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
               "\r\n"
               
          );
+
+         *res_size=header_len;
         
     }
 
 
  
     return res;
+}
+
+
+int gzip_compression(Bytef *source,uLong src_len,Bytef *dest,uLong *dst_len){
+       z_stream stream;
+
+       stream.zalloc=Z_NULL;
+       stream.zfree=Z_NULL;
+       stream.opaque=Z_NULL;
+
+       if(deflateInit2(&stream,Z_BEST_COMPRESSION,Z_DEFLATED,15+16,8,Z_DEFAULT_STRATEGY)!=Z_OK){
+             return -1;
+       }
+
+       stream.avail_in=src_len;
+       stream.next_in=source;
+       stream.avail_out=*dst_len;
+       stream.next_out=dest;
+
+       i32 ret=deflate(&stream,Z_FINISH);
+
+       deflateEnd(&stream);
+
+       if(ret!=Z_STREAM_END) return -2;
+
+      *dst_len=stream.total_out;
+      return 0;
 }
 
 
@@ -400,7 +429,6 @@ void *handle_client(void *args){
                     }else{
                         i32 total_len;
                         i8 *res=FILE_ENCODING(encoding_format,&total_len,str);
-                        //  write(1,res,total_len);
                         sent_bytes=send(ags->clientfd,res,total_len,0);
                         free(res);
                     }

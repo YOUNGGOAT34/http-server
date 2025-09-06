@@ -59,5 +59,7 @@ ssize_t RES_OK(i32 );
 ssize_t RES_CREATED(i32 clientFd);
 void LOG_REQUEST(i8 *,i8 *,i8 *,i8 *,i32,size_t,i8 *);
 
+int gzip_compression(Bytef *source,uLong src_len,Bytef *dest,uLong *dst_len);
+
 #endif
 
