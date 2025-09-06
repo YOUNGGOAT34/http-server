@@ -103,12 +103,6 @@ i8 *READ_FILE_CONTENTS(i8 *path,i32 clientFd,u64 *total_len){
 
    *total_len=(u64)header_len+filesize;
     fclose(file);
-
-    int fd = open("/home/goat/Desktop/http server/response_dump.bin", O_CREAT | O_WRONLY | O_TRUNC, 0644);
-
-
-
-
     return res;
 }
 
@@ -277,16 +271,6 @@ i8 *FILE_ENCODING(i8 *encoding_format,i32 *res_size,i8 *str){
     }
 
 
-int fd = open("response_dump.bin", O_CREAT | O_WRONLY | O_TRUNC, 0644);
-if (fd < 0) {
-   perror("Failed to open file for writing");
-} else {
-   ssize_t written = write(fd, res, *res_size);
-   if (written < 0) {
-       perror("Failed to write response to file");
-   }
-   close(fd);
-}
  
     return res;
 }
