@@ -63,3 +63,19 @@ int gzip_compression(Bytef *source,uLong src_len,Bytef *dest,uLong *dst_len);
 
 #endif
 
+/*
+  List of things to work on :
+  internal server error:500
+  switch statement in place of if statements
+  other compression formats
+  DELETE and POST methods
+  other status codes
+  A check is needed to confirm that the received bytes are not more than BUFF ,otherwise overflow will cause issues
+  if dir is shared among threads-race condition
+
+  check the return value of POST_REQUEST function when calling it
+  sanitize file paths to prevent directory traversal attacks
+  Parse HTTP headers into a map???????
+
+*/
+

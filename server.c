@@ -372,14 +372,16 @@ void *handle_client(void *args){
    client_arg *ags=(client_arg *)args;
   
     while(1){
-
+       
        i8 buffer[BUFF];
        
        ssize_t received_bytes=recv(ags->clientfd,buffer,BUFF,0);
          
        if(received_bytes<0){
-          free(args);
-          error("Error receivin client request");
+          //INTERNAL server error here
+         
+            fprintf(stderr,RED"Error receiving request from client: %s\n"RESET,strerror(errno));
+            break;
        }
       
        buffer[received_bytes]='\0';
@@ -457,7 +459,7 @@ void *handle_client(void *args){
    
    
            }else{
-               sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
+               sent_bytes=NOT_FOUND(ags->clientfd,"Unknown resource");
                status_code=404;
                res_size=strlen("Uknown resource");
            }
@@ -472,10 +474,7 @@ void *handle_client(void *args){
            break;
        }
 
-       if(received_bytes<0){
-         fprintf(stderr,RED"Error receiving requestfrom client: %s\n"RESET,strerror(errno));
-         break;
-       }
+
 
        if(strstr(buffer,"Connection: close") || received_bytes==0){
             printf(GREEN"client closed the connection\n"RESET);
@@ -534,7 +533,7 @@ void server(i8 *dir){
    i32 backlog=5;
    if(listen(sockfd,backlog)<0){
        close(sockfd);
-      error("Failed to listen on incomming connections\n");
+      error("Failed to listen on incoming connections\n");
    }
    
    printf(GREEN"Server Listening on PORT:%hd\n"RESET,PORT);
