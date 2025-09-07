@@ -371,107 +371,121 @@ void error(i8* msg){
 void *handle_client(void *args){
    client_arg *ags=(client_arg *)args;
   
-    i8 buffer[BUFF];
-   
-    ssize_t received_bytes=recv(ags->clientfd,buffer,BUFF,0);
+    while(1){
+
+       i8 buffer[BUFF];
+       
+       ssize_t received_bytes=recv(ags->clientfd,buffer,BUFF,0);
+         
+       if(received_bytes<0){
+          free(args);
+          error("Error receivin client request");
+       }
       
-    if(received_bytes<0){
-       free(args);
-       error("Error receivin client request");
-    }
+       buffer[received_bytes]='\0';
    
-    buffer[received_bytes]='\0';
-
-
-    /*
-       The request will have (what is received):
-                  Request line
-                  Headers
-                  Body(can be empty)
-
-               Request line:
-                     METHOD(i.e  GET,POST etc)
-                     PATH
-                     HTTP version ->Http/1.1 in this case
-
-            The longest HTTP method is 7 characters ,therefore 8(puls a null terminator) is enough for this
-            The path can vary but 1024 is enough
-            HTTP version is <16 characters
-
-    */
-
-    i8 method[8],path[1024],version[16];
-    ssize_t sent_bytes=0;
-    u64 total_size=0;
-    i32 status_code=0;
-    size_t res_size=0;
-    i8 clientIp[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET,&ags->addr.sin_addr,clientIp,sizeof(clientIp));
-    i8 *user=EXTRACT_USER_AGENT(buffer);
-    
-
-    //Handling a bad request
-    if(sscanf(buffer,"%s %s %s",method,path,version)!=3){
-        sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
-        status_code=404;
-        res_size=strlen("Bad request");
-    }else{
-        if(strcmp(path,"/")==0){
-             sent_bytes=RES_OK(ags->clientfd);
-             status_code=200;
-             res_size=0;
-        }else if(strcmp(method,"GET")==0 && strncmp(path,"/files/",7)==0){
-             i8 fullpath[BUFF];
-
-             snprintf(fullpath,sizeof(fullpath),"%s%s",ags->dir,path+7);
-
-             i8 *body=READ_FILE_CONTENTS(fullpath,ags->clientfd,&total_size);
-           
-             if(body){
-                sent_bytes=GET_REQUEST(body,ags->clientfd,total_size);
-                free(body);
-
+   
+       /*
+          The request will have (what is received):
+                     Request line
+                     Headers
+                     Body(can be empty)
+   
+                  Request line:
+                        METHOD(i.e  GET,POST etc)
+                        PATH
+                        HTTP version ->Http/1.1 in this case
+   
+               The longest HTTP method is 7 characters ,therefore 8(puls a null terminator) is enough for this
+               The path can vary but 1024 is enough
+               HTTP version is <16 characters
+   
+       */
+   
+       i8 method[8],path[1024],version[16];
+       ssize_t sent_bytes=0;
+       u64 total_size=0;
+       i32 status_code=0;
+       size_t res_size=0;
+       i8 clientIp[INET_ADDRSTRLEN];
+       inet_ntop(AF_INET,&ags->addr.sin_addr,clientIp,sizeof(clientIp));
+       i8 *user=EXTRACT_USER_AGENT(buffer);
+       
+   
+       //Handling a bad request
+       if(sscanf(buffer,"%s %s %s",method,path,version)!=3){
+           sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
+           status_code=404;
+           res_size=strlen("Bad request");
+       }else{
+           if(strcmp(path,"/")==0){
+                sent_bytes=RES_OK(ags->clientfd);
                 status_code=200;
-                res_size=total_size;
-             }else{
-               status_code = 404;
-               res_size = strlen("Requested file not found");
-             }  
-
-        }else if(strcmp(method,"POST")==0 && strncmp(path,"/files/",7)==0){
-                  sent_bytes=POST_REQUEST(ags,buffer,path);
-
-        }else if(strcmp(method,"GET")==0 && strncmp(path,"/echo/",6)==0){
-                    i8 *str=path+strlen("/echo/");
-                    i8 *encoding_format=strstr(buffer,"Accept-Encoding: ");
-                    if(!encoding_format){
-                        sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
-                    }else{
-                        i32 total_len;
-                        i8 *res=FILE_ENCODING(encoding_format,&total_len,str);
-                        sent_bytes=send(ags->clientfd,res,total_len,0);
-                        free(res);
-                    }
-
-
-        }else{
-            sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
-            status_code=404;
-            res_size=strlen("Uknown resource");
-        }
-    }
-
-    LOG_REQUEST(clientIp,version,path,method,status_code,res_size,user);
-   if(user) free(user);
-
-    if(sent_bytes<0){
-        free(args);
-        error("Error sending response to client\n");
-    }
-
-  
-
+                res_size=0;
+           }else if(strcmp(method,"GET")==0 && strncmp(path,"/files/",7)==0){
+                i8 fullpath[BUFF];
    
+                snprintf(fullpath,sizeof(fullpath),"%s%s",ags->dir,path+7);
+   
+                i8 *body=READ_FILE_CONTENTS(fullpath,ags->clientfd,&total_size);
+              
+                if(body){
+                   sent_bytes=GET_REQUEST(body,ags->clientfd,total_size);
+                   free(body);
+   
+                   status_code=200;
+                   res_size=total_size;
+                }else{
+                  status_code = 404;
+                  res_size = strlen("Requested file not found");
+                }  
+   
+           }else if(strcmp(method,"POST")==0 && strncmp(path,"/files/",7)==0){
+                     sent_bytes=POST_REQUEST(ags,buffer,path);
+   
+           }else if(strcmp(method,"GET")==0 && strncmp(path,"/echo/",6)==0){
+                       i8 *str=path+strlen("/echo/");
+                       i8 *encoding_format=strstr(buffer,"Accept-Encoding: ");
+                       if(!encoding_format){
+                           sent_bytes=NOT_FOUND(ags->clientfd,"Bad request");
+                       }else{
+                           i32 total_len;
+                           i8 *res=FILE_ENCODING(encoding_format,&total_len,str);
+                           sent_bytes=send(ags->clientfd,res,total_len,0);
+                           free(res);
+                       }
+   
+   
+           }else{
+               sent_bytes=NOT_FOUND(ags->clientfd,"Unkown resource");
+               status_code=404;
+               res_size=strlen("Uknown resource");
+           }
+       }
+   
+       LOG_REQUEST(clientIp,version,path,method,status_code,res_size,user);
+      if(user) free(user);
+   
+       if(sent_bytes<0){
+           
+           fprintf(stderr,RED"Error sending response to client: %s\n"RESET,strerror(errno));
+           break;
+       }
+
+       if(received_bytes<0){
+         fprintf(stderr,RED"Error receiving requestfrom client: %s\n"RESET,strerror(errno));
+         break;
+       }
+
+       if(strstr(buffer,"Connection: close") || received_bytes==0){
+            printf(GREEN"client closed the connection\n"RESET);
+            break;
+       }
+             
+   
+     
+    }
+
     close(ags->clientfd);
     free(args);
    return NULL;
